@@ -1,5 +1,5 @@
 {
-    "id": "3A0202",
+    "id": "3A0201",
     "name": {
         "en": "KRC-S",
         "ko": "KRC-S"
@@ -24,7 +24,6 @@
     }],
     "select_com_port": true,
     "reconnect": true,
-    "firmware": "KRC",
     "entry": {
         "protocol": "json"
     },
