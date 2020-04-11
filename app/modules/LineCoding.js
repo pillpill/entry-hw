@@ -5,7 +5,7 @@ function Module() {
         ALIVE: 0,
         DIGITAL: 1,
         ANALOG: 2,
-        BUZZER: 3,
+        //BUZZER: 3,
         SERVO: 4,
         TONE: 34,
         TEMP: 6,
@@ -52,6 +52,7 @@ function Module() {
         LINE_TIMER: 95,
         LINE_COLOR: 96,
         LINE_ABSH: 97,
+        LINE_BLACKFORWARDF: 98,
         LINE_REMOT: 100,
 
     };
@@ -510,13 +511,14 @@ Module.prototype.isRecentData = function(port, type, data) {
     let isRecent = false;
 	
     if (port in this.recentCheckData) {
-        if (type != this.sensorTypes.TONE && this.recentCheckData[port].type === type && this.recentCheckData[port].data === data) {   
+        if (type != this.sensorTypes.TONE && this.recentCheckData[port].type === type && 
+        this.recentCheckData[port].data === data) {   
                 // 톤 명령이 아니고 타입과 데이터가 같고 같은 자료형 이면 
                 //if (port > 20) {  LINE_EASY
                 if (type != this.sensorTypes.LINE_EASY && type != this.sensorTypes.LINE_EASY_MOTOR &&
                     type != this.sensorTypes.LINE_DELAY && type != this.sensorTypes.LINE_LINE &&
                     type != this.sensorTypes.LINE_TURN && type != this.sensorTypes.LINE_MOTOR &&
-                    type != this.sensorTypes.LINE_BMOTOR && type != this.sensorTypes.LINE_BWMOTOR ) {
+                    type != this.sensorTypes.LINE_BMOTOR && type != this.sensorTypes.LINE_BWMOTOR) {
                     isRecent = true;
                 }
         }
@@ -565,9 +567,9 @@ Module.prototype.makeSensorReadBuffer = function(device, port, data) {  // 센�
 //0xff 0x55 0x6 0x0 0x1 0xa 0x9 0x0 0x0 0xa
 Module.prototype.makeOutputBuffer = function(device, port, data) {   /// 출력 설정
     let buffer;
-    let value = new Buffer(2);
-    let dummy = new Buffer([10]);
-    let time = new Buffer(2);
+    const value = new Buffer(2);
+    const dummy = new Buffer([10]);
+    const time = new Buffer(2);
 		
     switch (device) {
         case this.sensorTypes.LINE_EASY:   // 쉬운주행
@@ -648,7 +650,15 @@ Module.prototype.makeOutputBuffer = function(device, port, data) {   /// 출력 
             device, port, data.absh1, data.absh2, data.absh3, data.absh4, data.absh5, data.absh6]);
             buffer = Buffer.concat([buffer, dummy]);
             break;
-        
+
+        case this.sensorTypes.LINE_BLACKFORWARDF:
+            value.writeInt16LE(data);
+            buffer = new Buffer([255, 85, 9, sensorIdx, this.actionTypes.SET, 
+            device, port, data.fsp, data.bsp, data.count, data.lsen, data.rsen]);
+            buffer = Buffer.concat([buffer, dummy]);
+            break;
+
+        case this.sensorTypes.LINE_BUZZER:
         case this.sensorTypes.LINE_LINEDELAY:   // 라인딜레이 
             if ($.isPlainObject(data)) {
                 value.writeInt16LE(data.linetime);
@@ -662,12 +672,18 @@ Module.prototype.makeOutputBuffer = function(device, port, data) {   /// 출력 
             buffer = Buffer.concat([buffer, value, time, dummy]);
             break;
 
-		case this.sensorTypes.BUZZER:   // 스피커 제어
-//			value.writeInt16LE(data); //writeFloatLE//!@#$
-            buffer = new Buffer([255, 85, 6, sensorIdx, this.actionTypes.SET, 
-            device, port, data]);
-			buffer = Buffer.concat([buffer, dummy]);
-			break;
+        case this.sensorTypes.LINE_LED:   // 라인 LED 
+            if ($.isPlainObject(data)) {
+                value.writeInt16LE(data.ontime);
+                time.writeInt16LE(data.offtime);
+            } else {
+                value.writeInt16LE(0);
+                time.writeInt16LE(0);
+            }
+            buffer = new Buffer([255, 85, 10, sensorIdx, 
+            this.actionTypes.SET, device, port, data.count, data.outport]);
+            buffer = Buffer.concat([buffer, value, time, dummy]);
+            break;
 			
         case this.sensorTypes.TONE:          // 스피커 제어 
 				if ($.isPlainObject(data)) {
